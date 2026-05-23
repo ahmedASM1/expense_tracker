@@ -1,23 +1,28 @@
 import { Router } from 'express';
 import pool from '../db/pool.js';
+import { getUserIdForRequest } from '../db/users.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
-// All routes require authentication
 router.use(requireAuth);
+
+async function requireUserId(req, res) {
+    const userId = await getUserIdForRequest(req);
+    if (!userId) {
+        res.status(401).json({ error: 'User not found' });
+        return null;
+    }
+    return userId;
+}
 
 // GET /api/expenses
 router.get('/', async (req, res) => {
     const { category_id, start_date, end_date } = req.query;
 
     try {
-        const user = await pool.query(
-            'SELECT id FROM users WHERE cognito_sub = $1',
-            [req.user.sub]
-        );
-        const userId = user.rows[0]?.id;
-        if (!userId) return res.status(404).json({ error: 'User not found' });
+        const userId = await requireUserId(req, res);
+        if (!userId) return;
 
         let query = `
             SELECT e.*, c.name as category_name, c.color as category_color
@@ -54,11 +59,8 @@ router.get('/', async (req, res) => {
 // GET /api/expenses/:id
 router.get('/:id', async (req, res) => {
     try {
-        const user = await pool.query(
-            'SELECT id FROM users WHERE cognito_sub = $1',
-            [req.user.sub]
-        );
-        const userId = user.rows[0]?.id;
+        const userId = await requireUserId(req, res);
+        if (!userId) return;
 
         const result = await pool.query(
             `SELECT e.*, c.name as category_name, c.color as category_color
@@ -88,12 +90,8 @@ router.post('/', async (req, res) => {
     }
 
     try {
-        const user = await pool.query(
-            'SELECT id FROM users WHERE cognito_sub = $1',
-            [req.user.sub]
-        );
-        const userId = user.rows[0]?.id;
-        if (!userId) return res.status(404).json({ error: 'User not found' });
+        const userId = await requireUserId(req, res);
+        if (!userId) return;
 
         const result = await pool.query(
             `INSERT INTO expenses
@@ -123,11 +121,8 @@ router.patch('/:id', async (req, res) => {
     const { title, amount, currency, category_id, expense_date, notes, s3_receipt_key } = req.body;
 
     try {
-        const user = await pool.query(
-            'SELECT id FROM users WHERE cognito_sub = $1',
-            [req.user.sub]
-        );
-        const userId = user.rows[0]?.id;
+        const userId = await requireUserId(req, res);
+        if (!userId) return;
 
         const existing = await pool.query(
             'SELECT id FROM expenses WHERE id = $1 AND user_id = $2',
@@ -161,11 +156,8 @@ router.patch('/:id', async (req, res) => {
 // DELETE /api/expenses/:id
 router.delete('/:id', async (req, res) => {
     try {
-        const user = await pool.query(
-            'SELECT id FROM users WHERE cognito_sub = $1',
-            [req.user.sub]
-        );
-        const userId = user.rows[0]?.id;
+        const userId = await requireUserId(req, res);
+        if (!userId) return;
 
         const result = await pool.query(
             'DELETE FROM expenses WHERE id = $1 AND user_id = $2 RETURNING id',
@@ -184,7 +176,6 @@ router.delete('/:id', async (req, res) => {
 });
 
 // POST /api/expenses/:id/receipt-upload-url
-// Returns a presigned S3 URL so the frontend can upload directly to S3
 router.post('/:id/receipt-upload-url', async (req, res) => {
     const { contentType = 'image/jpeg' } = req.body;
 

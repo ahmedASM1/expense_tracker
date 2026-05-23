@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import pool from '../db/pool.js';
+import { getUserIdForRequest } from '../db/users.js';
 import { requireAuth } from '../middleware/auth.js';
 
 
@@ -39,19 +40,19 @@ router.post('/register', async (req, res) => {
 });
 
 // GET /api/auth/me
-// Returns the current logged-in user from the database
 router.get('/me', requireAuth, async (req, res) => {
     try {
+        const userId = await getUserIdForRequest(req);
+        if (!userId) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
         const result = await pool.query(
             `SELECT id, full_name, email, role, created_at
              FROM users
-             WHERE cognito_sub = $1`,
-            [req.user.sub]
+             WHERE id = $1`,
+            [userId]
         );
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'User not found' });
-        }
 
         res.json(result.rows[0]);
     } catch (err) {

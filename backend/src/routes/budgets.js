@@ -1,21 +1,28 @@
 import { Router } from 'express';
 import pool from '../db/pool.js';
+import { getUserIdForRequest } from '../db/users.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
 router.use(requireAuth);
 
+async function requireUserId(req, res) {
+    const userId = await getUserIdForRequest(req);
+    if (!userId) {
+        res.status(401).json({ error: 'User not found' });
+        return null;
+    }
+    return userId;
+}
+
 // GET /api/budgets?month=5&year=2026
 router.get('/', async (req, res) => {
     const { month, year } = req.query;
 
     try {
-        const user = await pool.query(
-            'SELECT id FROM users WHERE cognito_sub = $1',
-            [req.user.sub]
-        );
-        const userId = user.rows[0]?.id;
+        const userId = await requireUserId(req, res);
+        if (!userId) return;
 
         let query = `
             SELECT b.*, c.name as category_name, c.color as category_color,
@@ -46,7 +53,6 @@ router.get('/', async (req, res) => {
 });
 
 // PUT /api/budgets
-// Creates or updates a budget (upsert)
 router.put('/', async (req, res) => {
     const { category_id, month, year, allocated_amount } = req.body;
 
@@ -55,11 +61,8 @@ router.put('/', async (req, res) => {
     }
 
     try {
-        const user = await pool.query(
-            'SELECT id FROM users WHERE cognito_sub = $1',
-            [req.user.sub]
-        );
-        const userId = user.rows[0]?.id;
+        const userId = await requireUserId(req, res);
+        if (!userId) return;
 
         const result = await pool.query(
             `INSERT INTO budgets (user_id, category_id, month, year, allocated_amount)
@@ -80,11 +83,8 @@ router.put('/', async (req, res) => {
 // DELETE /api/budgets/:id
 router.delete('/:id', async (req, res) => {
     try {
-        const user = await pool.query(
-            'SELECT id FROM users WHERE cognito_sub = $1',
-            [req.user.sub]
-        );
-        const userId = user.rows[0]?.id;
+        const userId = await requireUserId(req, res);
+        if (!userId) return;
 
         const result = await pool.query(
             'DELETE FROM budgets WHERE id = $1 AND user_id = $2 RETURNING id',

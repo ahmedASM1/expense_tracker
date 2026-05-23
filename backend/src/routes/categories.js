@@ -1,19 +1,26 @@
 import { Router } from 'express';
 import pool from '../db/pool.js';
+import { getUserIdForRequest } from '../db/users.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
 router.use(requireAuth);
 
+async function requireUserId(req, res) {
+    const userId = await getUserIdForRequest(req);
+    if (!userId) {
+        res.status(401).json({ error: 'User not found' });
+        return null;
+    }
+    return userId;
+}
+
 // GET /api/categories
 router.get('/', async (req, res) => {
     try {
-        const user = await pool.query(
-            'SELECT id FROM users WHERE cognito_sub = $1',
-            [req.user.sub]
-        );
-        const userId = user.rows[0]?.id;
+        const userId = await requireUserId(req, res);
+        if (!userId) return;
 
         const result = await pool.query(
             'SELECT * FROM categories WHERE user_id = $1 ORDER BY name ASC',
@@ -32,11 +39,8 @@ router.post('/', async (req, res) => {
     if (!name) return res.status(400).json({ error: 'name is required' });
 
     try {
-        const user = await pool.query(
-            'SELECT id FROM users WHERE cognito_sub = $1',
-            [req.user.sub]
-        );
-        const userId = user.rows[0]?.id;
+        const userId = await requireUserId(req, res);
+        if (!userId) return;
 
         const result = await pool.query(
             `INSERT INTO categories (user_id, name, color)
@@ -55,11 +59,8 @@ router.patch('/:id', async (req, res) => {
     const { name, color } = req.body;
 
     try {
-        const user = await pool.query(
-            'SELECT id FROM users WHERE cognito_sub = $1',
-            [req.user.sub]
-        );
-        const userId = user.rows[0]?.id;
+        const userId = await requireUserId(req, res);
+        if (!userId) return;
 
         const result = await pool.query(
             `UPDATE categories SET
@@ -83,11 +84,8 @@ router.patch('/:id', async (req, res) => {
 // DELETE /api/categories/:id
 router.delete('/:id', async (req, res) => {
     try {
-        const user = await pool.query(
-            'SELECT id FROM users WHERE cognito_sub = $1',
-            [req.user.sub]
-        );
-        const userId = user.rows[0]?.id;
+        const userId = await requireUserId(req, res);
+        if (!userId) return;
 
         const result = await pool.query(
             'DELETE FROM categories WHERE id = $1 AND user_id = $2 RETURNING id',
