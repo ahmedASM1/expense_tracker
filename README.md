@@ -130,16 +130,3 @@ All protected routes expect a JWT (Cognito) or, in development, the `auth_token`
 
 - **Frontend:** Connect the `frontend/` directory to Vercel; set `BACKEND_URL` to your EC2 API URL.
 - **Backend:** Run `./deploy.sh` to copy the API to EC2, apply migrations, and start with PM2 (requires `expense-tracker-key.pem` and `.env` configured for RDS).
-
----
-
-## Team workload
-
-| Member | Role in app | Feature area |
-|--------|-------------|--------------|
-| *(assign)* | End user | Expenses & receipt uploads |
-| *(assign)* | End user | Categories |
-| *(assign)* | End user | Monthly budgets |
-| *(assign)* | Admin | Account settings & auth |
-
-Update the table with your team names before submission.
