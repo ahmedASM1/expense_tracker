@@ -1,0 +1,20 @@
+# Secrets & local env (never commit)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# SSH / TLS keys
+*.pem
+*.key
+
+# Dependencies & build output
+node_modules/
+.next/
+dist/
+build/
+
+# OS & editor
+.DS_Store
+Thumbs.db
+*.log

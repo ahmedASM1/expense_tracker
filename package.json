@@ -1,0 +1,15 @@
+{
+  "name": "expense-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:docker": "docker compose up --build"
+  },
+  "dependencies": {
+    "oidc-client-ts": "^3.5.0",
+    "react-oidc-context": "^3.3.1"
+  }
+}
